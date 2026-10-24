@@ -1,0 +1,191 @@
+{
+  "info": {
+    "name": "Realtime Dashboard API",
+    "description": "REST API dashboard monitoring. Data real-time dikirim via Socket.io (event: metric:update, log:new, rate:update, clients:count, server:hello). Jalankan backend lebih dulu (npm start di folder server), lalu klik Send.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" }
+  ],
+  "item": [
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "description": "Status server, jumlah baris metrik, dan jumlah klien WebSocket.",
+            "url": { "raw": "{{baseUrl}}/api/health", "host": ["{{baseUrl}}"], "path": ["api", "health"] }
+          }
+        },
+        {
+          "name": "Query plan (bukti index)",
+          "request": {
+            "method": "GET",
+            "description": "EXPLAIN QUERY PLAN. Hasil harus menyebut idx_metrics_type_ts, artinya query memakai index, bukan full table scan.",
+            "url": { "raw": "{{baseUrl}}/api/debug/query-plan", "host": ["{{baseUrl}}"], "path": ["api", "debug", "query-plan"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Metrics",
+      "item": [
+        {
+          "name": "List metrics",
+          "request": {
+            "method": "GET",
+            "description": "Daftar metrik. type: server_temp | cpu_load | transactions. from/to: epoch ms atau tanggal ISO. limit 1-5000 (default 100). cursor: isi dengan nextCursor dari respons sebelumnya untuk halaman berikutnya.",
+            "url": {
+              "raw": "{{baseUrl}}/api/metrics?type=cpu_load&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "metrics"],
+              "query": [
+                { "key": "type", "value": "cpu_load", "description": "server_temp | cpu_load | transactions" },
+                { "key": "limit", "value": "10", "description": "1-5000" },
+                { "key": "from", "value": "", "description": "epoch ms atau ISO date", "disabled": true },
+                { "key": "to", "value": "", "description": "epoch ms atau ISO date", "disabled": true },
+                { "key": "cursor", "value": "", "description": "nextCursor dari respons sebelumnya", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Metrics series (agregat per bucket)",
+          "request": {
+            "method": "GET",
+            "description": "Data teragregasi (avg/min/max/sum/n) per bucket waktu, cocok untuk grafik rentang panjang. type wajib diisi. buckets 1-1000 (default 60).",
+            "url": {
+              "raw": "{{baseUrl}}/api/metrics/series?type=server_temp&buckets=20&from=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "metrics", "series"],
+              "query": [
+                { "key": "type", "value": "server_temp", "description": "wajib" },
+                { "key": "buckets", "value": "20", "description": "1-1000" },
+                { "key": "from", "value": "0", "description": "epoch ms atau ISO date (default 15 menit terakhir)" },
+                { "key": "to", "value": "", "description": "epoch ms atau ISO date", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Metrics summary",
+          "request": {
+            "method": "GET",
+            "description": "Nilai terbaru dan agregat 5 menit terakhir untuk tiap jenis metrik.",
+            "url": { "raw": "{{baseUrl}}/api/metrics/summary", "host": ["{{baseUrl}}"], "path": ["api", "metrics", "summary"] }
+          }
+        },
+        {
+          "name": "Invalid type (contoh error 400)",
+          "request": {
+            "method": "GET",
+            "description": "Contoh validasi: type tidak dikenal menghasilkan 400 dengan pesan jelas.",
+            "url": {
+              "raw": "{{baseUrl}}/api/metrics?type=salah",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "metrics"],
+              "query": [{ "key": "type", "value": "salah" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logs",
+      "item": [
+        {
+          "name": "List logs",
+          "request": {
+            "method": "GET",
+            "description": "Log aktivitas terbaru. level: info | warn | error. limit 1-1000 (default 50). cursor untuk halaman berikutnya.",
+            "url": {
+              "raw": "{{baseUrl}}/api/logs?limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "logs"],
+              "query": [
+                { "key": "limit", "value": "10" },
+                { "key": "level", "value": "error", "description": "info | warn | error", "disabled": true },
+                { "key": "cursor", "value": "", "disabled": true }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rates",
+      "item": [
+        {
+          "name": "Latest rates",
+          "request": {
+            "method": "GET",
+            "description": "Kurs terbaru per pasangan mata uang. source = api (API publik open.er-api.com) atau simulated (fallback saat API tidak terjangkau).",
+            "url": { "raw": "{{baseUrl}}/api/rates/latest", "host": ["{{baseUrl}}"], "path": ["api", "rates", "latest"] }
+          }
+        },
+        {
+          "name": "Rates history",
+          "request": {
+            "method": "GET",
+            "description": "Riwayat kurs satu mata uang tujuan, urut dari lama ke baru. limit 1-2000.",
+            "url": {
+              "raw": "{{baseUrl}}/api/rates/history?target=IDR&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rates", "history"],
+              "query": [
+                { "key": "target", "value": "IDR" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Refresh rates now",
+          "request": {
+            "method": "POST",
+            "description": "Paksa ambil kurs dari API publik sekarang. Hasil juga disiarkan lewat event rate:update. Mengembalikan 502 jika gagal.",
+            "url": { "raw": "{{baseUrl}}/api/rates/refresh", "host": ["{{baseUrl}}"], "path": ["api", "rates", "refresh"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Export",
+      "item": [
+        {
+          "name": "Export metrics CSV",
+          "request": {
+            "method": "GET",
+            "description": "Ekspor metrik ke CSV (streaming). Di Postman pakai Send and Download untuk menyimpan file. limit maksimal 500000.",
+            "url": {
+              "raw": "{{baseUrl}}/api/export/metrics.csv?limit=1000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "export", "metrics.csv"],
+              "query": [
+                { "key": "limit", "value": "1000" },
+                { "key": "type", "value": "cpu_load", "disabled": true },
+                { "key": "from", "value": "", "disabled": true },
+                { "key": "to", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Export logs CSV",
+          "request": {
+            "method": "GET",
+            "description": "Ekspor log aktivitas ke CSV (streaming).",
+            "url": {
+              "raw": "{{baseUrl}}/api/export/logs.csv?limit=1000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "export", "logs.csv"],
+              "query": [{ "key": "limit", "value": "1000" }]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
