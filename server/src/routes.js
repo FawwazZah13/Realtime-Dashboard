@@ -20,14 +20,14 @@ const toTs = (v) => {
 
 function csvEscape(v) {
   if (v == null) return "";
-  const s = String(v);
+  const s = String(v).replace(/°C/g, "C");
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-// Stream CSV baris per baris agar data besar tidak memenuhi memori.
 function streamCsv(res, filename, headers, iterator) {
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.write("\uFEFFsep=,\n");
   res.write(headers.join(",") + "\n");
   for (const row of iterator) {
     res.write(headers.map((h) => csvEscape(row[h])).join(",") + "\n");
@@ -43,8 +43,7 @@ export function buildRouter(io) {
     res.json({ status: "ok", uptime: process.uptime(), metricsRows: c, clients: io.engine.clientsCount });
   });
 
-  // --- Metrics -----------------------------------------------------------
-  // Pagination memakai cursor (id) -> O(log n), tidak seperti OFFSET yang melambat.
+  // --- Metrics ---
   r.get("/metrics", (req, res) => {
     const { type } = req.query;
     if (type && !METRIC_TYPES.includes(type)) {
@@ -69,7 +68,7 @@ export function buildRouter(io) {
     res.json({ data: rows, nextCursor: rows.length === limit ? rows[rows.length - 1].id : null });
   });
 
-  // Agregasi per bucket waktu (avg/min/max) -> ideal untuk grafik rentang panjang.
+  // Agregasi per bucket waktu (avg/min/max)
   r.get("/metrics/series", (req, res) => {
     const type = req.query.type;
     if (!METRIC_TYPES.includes(type)) {
@@ -106,7 +105,7 @@ export function buildRouter(io) {
     res.json(out);
   });
 
-  // --- Logs --------------------------------------------------------------
+  // --- Logs ---
   r.get("/logs", (req, res) => {
     const { level } = req.query;
     if (level && !LOG_LEVELS.includes(level)) {
@@ -157,7 +156,7 @@ export function buildRouter(io) {
     }
   });
 
-  // --- Export CSV --------------------------------------------------------
+  // --- Export CSV ---
   r.get("/export/metrics.csv", (req, res) => {
     const { type } = req.query;
     if (type && !METRIC_TYPES.includes(type)) return res.status(400).json({ error: "type tidak valid" });
@@ -186,7 +185,7 @@ export function buildRouter(io) {
     streamCsv(res, "logs.csv", ["id", "level", "source", "message", "time_utc", "ts"], stmt.iterate(limit));
   });
 
-  // --- Bukti penggunaan index -------------------------------------------
+  // ---  indexing ---
   r.get("/debug/query-plan", (_req, res) => {
     const plan = db
       .prepare("EXPLAIN QUERY PLAN SELECT * FROM metrics WHERE type = ? AND ts BETWEEN ? AND ? ORDER BY ts DESC LIMIT 100")
