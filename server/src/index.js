@@ -1,4 +1,25 @@
 import "dotenv/config";
+
+const REQUIRED_NODE_VERSION = [22, 13, 0];
+const currentNodeVersion = process.versions.node
+  .split(".")
+  .map(Number);
+
+const isSupportedNodeVersion =
+  currentNodeVersion[0] > REQUIRED_NODE_VERSION[0] ||
+  (currentNodeVersion[0] === REQUIRED_NODE_VERSION[0] &&
+    currentNodeVersion[1] > REQUIRED_NODE_VERSION[1]) ||
+  (currentNodeVersion[0] === REQUIRED_NODE_VERSION[0] &&
+    currentNodeVersion[1] === REQUIRED_NODE_VERSION[1] &&
+    currentNodeVersion[2] >= REQUIRED_NODE_VERSION[2]);
+
+if (!isSupportedNodeVersion) {
+  console.error(
+    `[server] Node.js minimal v${REQUIRED_NODE_VERSION.join(".")}, versi saat ini v${process.versions.node}`
+  );
+  process.exit(1);
+}
+
 import express from "express";
 import cors from "cors";
 import http from "node:http";
