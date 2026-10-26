@@ -63,7 +63,6 @@ export default function ExportMenu({ series, onToast }) {
                 headStyles: { fillColor: [30, 41, 59] },
             });
             doc.save("metrics-report.pdf");
-            doc.save("metrics-report.pdf");
             if (offline) onToast("Server tidak tersedia, PDF dibuat dari data di layar (terbatas)", "warn");
             else onToast("PDF berhasil dibuat", "ok");
         } catch (e) {
