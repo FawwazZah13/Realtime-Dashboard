@@ -87,8 +87,8 @@ export default function App() {
               <tbody>
                 {d.rates.map((r) => (
                   <tr key={`${r.base}${r.target}`}>
-                    <td>{r.base}/{r.target}</td>
-                    <td>{r.rate.toLocaleString("id-ID", { maximumFractionDigits: 4 })}</td>
+                    <td>{r.base}/{r.target}</td> 
+                    <td>{new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 }).format(r.rate)}</td>
                     <td><span className={`tag tag-${r.source}`}>{r.source === "api" ? "API publik" : "simulasi"}</span></td>
                     <td>{fmtTime(r.ts)}</td>
                   </tr>
