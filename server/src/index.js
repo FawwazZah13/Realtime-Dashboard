@@ -6,15 +6,28 @@ import { Server } from "socket.io";
 import { buildRouter } from "./routes.js";
 import { startGenerator } from "./generator.js";
 import { startRatesJob } from "./rates.js";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 const PORT = Number(process.env.PORT || 4000);
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "*";
 const origins = CLIENT_ORIGIN === "*" ? "*" : CLIENT_ORIGIN.split(",").map((s) => s.trim());
 
 const app = express();
-app.use(cors({ origin: origins }));
-app.use(express.json());
 
+app.use(helmet());
+
+app.use(cors({ origin: origins }));
+
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: Number(process.env.RATE_LIMIT_MAX || 300),
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Terlalu banyak request, silakan coba lagi nanti." },
+}));
+
+app.use(express.json({ limit: "1mb" }));
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: origins },

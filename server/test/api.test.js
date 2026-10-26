@@ -42,7 +42,7 @@ before(async () => {
         output += data.toString();
     });
 
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 100; i++) {
         if (server.exitCode !== null) {
             throw new Error(`Server gagal dijalankan:\n${output}`);
         }
@@ -83,6 +83,15 @@ test("server berjalan dengan database test kosong", async () => {
     const body = await response.json();
     assert.equal(body.status, "ok");
     assert.equal(body.metricsRows, 0);
+});
+
+test("Helmet memasang header keamanan HTTP", async () => {
+    const response = await fetch(`${baseUrl}/api/health`);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+    assert.ok(response.headers.get("x-frame-options"));
+    assert.ok(response.headers.get("content-security-policy"));
 });
 
 test("metrics menolak tipe yang tidak valid", async () => {
@@ -333,3 +342,80 @@ test("P1-1: generator mengirim log:new melalui Socket.IO", { timeout: 20000 }, a
   }
 });
 
+test("rate limit menolak request berlebihan dengan status 429", async () => {
+    const testDir = await mkdtemp(path.join(os.tmpdir(), "dashboard-rate-limit-test-"));
+    const testDbPath = path.join(testDir, "rate-limit-test.db");
+    const port = 6100 + Math.floor(Math.random() * 1000);
+    const testUrl = `http://127.0.0.1:${port}`;
+
+    let child;
+    let childOutput = "";
+
+    try {
+        child = spawn(process.execPath, ["src/index.js"], {
+            cwd: process.cwd(),
+            env: {
+                ...process.env,
+                NODE_ENV: "test",
+                DB_PATH: testDbPath,
+                PORT: String(port),
+                ENABLE_GENERATOR: "false",
+                ENABLE_RATES: "false",
+                RATE_LIMIT_MAX: "2",
+                CLIENT_ORIGIN: "http://localhost:5173",
+            },
+            stdio: ["ignore", "pipe", "pipe"],
+        });
+
+        child.stdout.on("data", (data) => {
+            childOutput += data.toString();
+        });
+
+        child.stderr.on("data", (data) => {
+            childOutput += data.toString();
+        });
+
+        let ready = false;
+
+        for (let i = 0; i < 100; i++) {
+            if (child.exitCode !== null) {
+                throw new Error(`Server rate limit gagal dijalankan:\n${childOutput}`);
+            }
+
+            try {
+                const response = await fetch(`${testUrl}/api/health`);
+                if (response.status === 200) {
+                    ready = true;
+                    break;
+                }
+            } catch {
+                // Server masih startup.
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+
+        assert.ok(ready, `Server rate limit tidak siap:\n${childOutput}`);
+
+        // Dua request pertama menghabiskan batas.
+        await fetch(`${testUrl}/api/health`);
+        const blockedResponse = await fetch(`${testUrl}/api/health`);
+
+        assert.equal(blockedResponse.status, 429);
+
+        const body = await blockedResponse.json();
+        assert.equal(body.error, "Terlalu banyak request, silakan coba lagi nanti.");
+    } finally {
+        if (child && child.exitCode === null) {
+            const exited = once(child, "exit");
+            child.kill("SIGTERM");
+
+            await Promise.race([
+                exited,
+                new Promise((resolve) => setTimeout(resolve, 3000)),
+            ]);
+        }
+
+        await rm(testDir, { recursive: true, force: true });
+    }
+});
