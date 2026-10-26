@@ -50,9 +50,23 @@ export function buildRouter(io) {
       return res.status(400).json({ error: `type harus salah satu dari: ${METRIC_TYPES.join(", ")}` });
     }
     const limit = toInt(req.query.limit, 100, 1, 5000);
-    const from = toTs(req.query.from);
+        const from = toTs(req.query.from);
     const to = toTs(req.query.to);
+
+    if (req.query.from != null && from == null) {
+      return res.status(400).json({ error: "parameter from tidak valid" });
+    }
+    if (req.query.to != null && to == null) {
+      return res.status(400).json({ error: "parameter to tidak valid" });
+    }
+    if (from != null && to != null && from > to) {
+      return res.status(400).json({ error: "from harus <= to" });
+    }
+
     const cursor = toInt(req.query.cursor, null, 1, Number.MAX_SAFE_INTEGER);
+    if (req.query.cursor && cursor == null) {
+      return res.status(400).json({ error: "cursor tidak valid" });
+    }
 
     const where = [];
     const params = [];
