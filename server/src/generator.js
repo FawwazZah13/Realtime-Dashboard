@@ -44,7 +44,7 @@ export function startGenerator(io) {
             const message = MESSAGES[level][Math.floor(Math.random() * MESSAGES[level].length)];
             const source = SOURCE[Math.floor(Math.random() * SOURCE.length)];
 
-            io.emit("logLnew", insertLog(level, source, message, ts));
+            io.emit("log:new", insertLog(level, source, message, ts));
         }
     });
 
