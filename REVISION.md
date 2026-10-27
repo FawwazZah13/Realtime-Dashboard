@@ -53,7 +53,7 @@ Bukti CI: https://github.com/FawwazZah13/Realtime-Dashboard/actions/runs/4034247
 
 ## Poin yang Tidak Dikerjakan
 
-- **Docker / Docker Compose:** tidak dikerjakan karena implementasi Docker tidak dilanjutkan sesuai keputusan pengerjaan. Tidak ada klaim bahwa aplikasi telah diverifikasi melalui Docker.
+- **Docker / Docker Compose:** tidak dikerjakan karena implementasi Docker tidak dilanjutkan sesuai keputusan pengerjaan. Device yang digunakan tidak cukup kuat untuk menggunakan docker 
 - **Pengujian startup menggunakan versi Node.js yang tidak memenuhi syarat:** belum dilakukan. Verifikasi yang tersedia hanya menguji logika perbandingan versi menggunakan Node.js `24.11.1`, bukan membuktikan proses startup ditolak pada versi Node.js yang lebih lama.
 
 
